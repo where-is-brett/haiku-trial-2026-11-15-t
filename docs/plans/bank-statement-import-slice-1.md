@@ -206,7 +206,7 @@ test('a doubled quote inside a quoted field is one quote', () => {
 
 test('blank lines in the middle and at the end are skipped, and no final newline is fine', () => {
   const rows = readStatement(`${H}02/08/2026,A,1.00\n\n   \n03/08/2026,B,2.00`);
-  assert.deepEqual(rows.map((r) => r.line), [2, 4]);
+  assert.deepEqual(rows.map((r) => r.line), [2, 5]);
 });
 
 test('the sample statement reads as 128 rows', () => {
