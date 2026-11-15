@@ -1,3 +1,4 @@
 {
-  "bank-statement-import": false
+  "bank-statement-import": false,
+  "edit-category": false
 }

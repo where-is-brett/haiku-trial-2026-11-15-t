@@ -3,11 +3,13 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { createTable, importRows } from './lib/store.js';
+import { createTable, importRows, findTransaction, categoryFor } from './lib/store.js';
 import { loadFlags, isOn } from './lib/flags.js';
 import { readStatement, StatementError } from './lib/statement.js';
 import { readUpload, UploadError } from './lib/upload.js';
 import { listMonths } from './lib/months.js';
+import { CATEGORIES } from './lib/categories.js';
+import { formatCents } from './lib/money.js';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -31,6 +33,38 @@ ${body}
 </body>
 </html>
 `;
+}
+
+// Escapes text for HTML, so a stored value is shown as written.
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// The edit page for the id in idText: { status, body }, body a full page.
+function editPage(db, idText) {
+  const row = /^\d+$/.test(idText ?? '') ? findTransaction(db, Number(idText)) : undefined;
+  if (!row) return { status: 404, body: page('<p>No transaction with that id</p>') };
+
+  const current = categoryFor(row);
+  const options = CATEGORIES.map(
+    (c) => `<option value="${c.key}"${c.key === current ? ' selected' : ''}>${escapeHtml(c.label)}</option>`,
+  ).join('\n');
+  const body = `<h2>Edit transaction</h2>
+<p>${escapeHtml(row.date)} ${escapeHtml(row.description)} ${formatCents(row.cents)}</p>
+<form method="post" action="/edit">
+<input type="hidden" name="id" value="${row.id}">
+<label for="category">Category</label>
+<select name="category" id="category">
+${options}
+</select>
+<button type="submit">Save</button>
+</form>`;
+  return { status: 200, body: page(body) };
 }
 
 // Reads an uploaded statement and stores its rows; answers with the page to show.
@@ -76,6 +110,12 @@ export function createApp({ db, flags }) {
 </form>`;
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(page(body));
+      return;
+    }
+    if (url.pathname === '/edit' && req.method === 'GET' && isOn(flags, 'edit-category')) {
+      const { status, body } = editPage(db, url.searchParams.get('id'));
+      res.writeHead(status, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(body);
       return;
     }
     if (url.pathname === '/import' && req.method === 'POST' && isOn(flags, 'bank-statement-import')) {
