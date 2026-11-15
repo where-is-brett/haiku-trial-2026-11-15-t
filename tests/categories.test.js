@@ -1,7 +1,7 @@
 // tests/categories.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CATEGORIES, categoryOf } from '../src/lib/categories.js';
+import { CATEGORIES, categoryOf, isCategoryKey } from '../src/lib/categories.js';
 
 const SHOPS = {
   groceries: ['Greenbarrow Fresh', 'Pennywhistle Market', 'Lowtide Grocers', 'Harvest Lane Foods'],
@@ -29,6 +29,12 @@ test('the match ignores case', () => {
 test('a description with no shop gives other', () => {
   assert.equal(categoryOf('Unknown merchant 1234'), 'other');
   assert.equal(categoryOf(''), 'other');
+});
+
+test('isCategoryKey is true only for a category key', () => {
+  assert.equal(isCategoryKey('dining'), true);
+  assert.equal(isCategoryKey('eating_out'), false);
+  assert.equal(isCategoryKey(''), false);
 });
 
 test('every category key has a label', () => {

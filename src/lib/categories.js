@@ -23,6 +23,11 @@ const SHOPS = {
   income: ['Brightwave Payroll', 'Tidepool Interest', 'Oakridge Dividends'],
 };
 
+// True when key is one of the keys in CATEGORIES.
+export function isCategoryKey(key) {
+  return CATEGORIES.some((c) => c.key === key);
+}
+
 // Returns the key of the category whose shop name appears in the description,
 // ignoring case. A description with no known shop is 'other'.
 export function categoryOf(description) {
