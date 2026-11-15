@@ -3,7 +3,7 @@
 // Every category, in the order it is shown.
 export const CATEGORIES = [
   { key: 'groceries', label: 'Groceries' },
-  { key: 'eating_out', label: 'Eating out' },
+  { key: 'dining', label: 'Eating out' },
   { key: 'transport', label: 'Transport' },
   { key: 'bills', label: 'Bills' },
   { key: 'shopping', label: 'Shopping' },
@@ -15,7 +15,7 @@ export const CATEGORIES = [
 // The shop names that belong to each category.
 const SHOPS = {
   groceries: ['Greenbarrow Fresh', 'Pennywhistle Market', 'Lowtide Grocers', 'Harvest Lane Foods'],
-  eating_out: ['Pasta, Pizza & Co', 'Kestrel Coffee Bar', 'Saltbush Noodle House', 'Ember Grill'],
+  dining: ['Pasta, Pizza & Co', 'Kestrel Coffee Bar', 'Saltbush Noodle House', 'Ember Grill'],
   transport: ['Waverly Fuel Stop', 'Tramline Fares', 'Lantern Rideshare', 'Northgate Parking'],
   bills: ['Brightfield Power', 'Clearwater Utilities', 'Skyline Broadband', 'Hollis Insurance'],
   shopping: ['Marlowe Homewares', 'Quillon Books', 'Fernhill Outfitters', 'Pixel Parade Tech'],
