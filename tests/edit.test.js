@@ -87,3 +87,115 @@ test('with the flag off, /edit is not found', async () => {
     server.close();
   }
 });
+
+// Seeds a row and clears its stored category, so it starts as a pre-change row.
+const seedUncategorised = (db, row) => {
+  seed(db, row);
+  db.exec('UPDATE transactions SET category = NULL');
+};
+const storedCategory = (db, id) =>
+  db.prepare('SELECT category FROM transactions WHERE id = ?').get(id).category;
+const countCategory = (db, key) =>
+  db.prepare('SELECT COUNT(*) AS n FROM transactions WHERE category = ?').get(key).n;
+
+// POSTs an edit form; redirects are not followed, so the 303 is seen.
+const postEdit = (base, params) => fetch(`${base}/edit`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/x-www-form-urlencoded' },
+  body: new URLSearchParams(params),
+  redirect: 'manual',
+});
+
+test('saving a category stores it and redirects to the transaction\'s month', async () => {
+  const { db, server, base } = await serve({ 'edit-category': true });
+  try {
+    seedUncategorised(db, { date: '2026-08-02', description: 'Greenbarrow Fresh', cents: -4500 });
+    const res = await postEdit(base, { id: '1', category: 'dining' });
+    assert.equal(res.status, 303);
+    assert.equal(res.headers.get('location'), '/month?m=2026-08');
+    assert.equal(storedCategory(db, 1), 'dining');
+  } finally {
+    server.close();
+  }
+});
+
+test('the redirect uses the row\'s own month across a year boundary', async () => {
+  const { db, server, base } = await serve({ 'edit-category': true });
+  try {
+    seedUncategorised(db, { date: '2025-12-31', description: 'Brightfield Power', cents: -9000 });
+    const res = await postEdit(base, { id: '1', category: 'bills' });
+    assert.equal(res.status, 303);
+    assert.equal(res.headers.get('location'), '/month?m=2025-12');
+  } finally {
+    server.close();
+  }
+});
+
+test('a category that is not a key is refused and stores nothing', async () => {
+  const { db, server, base } = await serve({ 'edit-category': true });
+  try {
+    seedUncategorised(db, { date: '2026-08-02', description: 'Greenbarrow Fresh', cents: -4500 });
+    const res = await postEdit(base, { id: '1', category: 'eating_out' });
+    assert.equal(res.status, 400);
+    assert.match(await res.text(), /Choose a category from the list/);
+    assert.equal(storedCategory(db, 1), null);
+  } finally {
+    server.close();
+  }
+});
+
+test('a missing category is refused', async () => {
+  const { db, server, base } = await serve({ 'edit-category': true });
+  try {
+    seedUncategorised(db, { date: '2026-08-02', description: 'Greenbarrow Fresh', cents: -4500 });
+    const res = await postEdit(base, { id: '1' });
+    assert.equal(res.status, 400);
+    assert.equal(storedCategory(db, 1), null);
+  } finally {
+    server.close();
+  }
+});
+
+test('an unknown id on save gets the error page and stores nothing', async () => {
+  const { db, server, base } = await serve({ 'edit-category': true });
+  try {
+    seedUncategorised(db, { date: '2026-08-02', description: 'Greenbarrow Fresh', cents: -4500 });
+    const res = await postEdit(base, { id: '999', category: 'dining' });
+    assert.equal(res.status, 404);
+    assert.match(await res.text(), /No transaction with that id/);
+    assert.equal(countCategory(db, 'dining'), 0);
+  } finally {
+    server.close();
+  }
+});
+
+test('a body over 4 KB is refused with 413', async () => {
+  const { db, server, base } = await serve({ 'edit-category': true });
+  try {
+    seedUncategorised(db, { date: '2026-08-02', description: 'Greenbarrow Fresh', cents: -4500 });
+    const body = `${'x'.repeat(5000)}&id=1&category=dining`;
+    const res = await fetch(`${base}/edit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+      redirect: 'manual',
+    });
+    assert.equal(res.status, 413);
+    assert.equal(storedCategory(db, 1), null);
+  } finally {
+    server.close();
+  }
+});
+
+test('with the flag off, a POST to /edit is not found', async () => {
+  const { db, server, base } = await serve({});
+  try {
+    seedUncategorised(db, { date: '2026-08-02', description: 'Greenbarrow Fresh', cents: -4500 });
+    const res = await postEdit(base, { id: '1', category: 'dining' });
+    assert.equal(res.status, 404);
+    assert.equal(await res.text(), 'Not found');
+    assert.equal(storedCategory(db, 1), null);
+  } finally {
+    server.close();
+  }
+});
