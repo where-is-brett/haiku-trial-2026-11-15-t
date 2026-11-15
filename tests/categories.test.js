@@ -5,7 +5,7 @@ import { CATEGORIES, categoryOf } from '../src/lib/categories.js';
 
 const SHOPS = {
   groceries: ['Greenbarrow Fresh', 'Pennywhistle Market', 'Lowtide Grocers', 'Harvest Lane Foods'],
-  eating_out: ['Pasta, Pizza & Co', 'Kestrel Coffee Bar', 'Saltbush Noodle House', 'Ember Grill'],
+  dining: ['Pasta, Pizza & Co', 'Kestrel Coffee Bar', 'Saltbush Noodle House', 'Ember Grill'],
   transport: ['Waverly Fuel Stop', 'Tramline Fares', 'Lantern Rideshare', 'Northgate Parking'],
   bills: ['Brightfield Power', 'Clearwater Utilities', 'Skyline Broadband', 'Hollis Insurance'],
   shopping: ['Marlowe Homewares', 'Quillon Books', 'Fernhill Outfitters', 'Pixel Parade Tech'],
@@ -23,7 +23,7 @@ test('each listed shop name, in a sample description, gives its category', () =>
 
 test('the match ignores case', () => {
   assert.equal(categoryOf('POS GREENBARROW FRESH'), 'groceries');
-  assert.equal(categoryOf('pasta, pizza & co 12/03'), 'eating_out');
+  assert.equal(categoryOf('pasta, pizza & co 12/03'), 'dining');
 });
 
 test('a description with no shop gives other', () => {
