@@ -7,6 +7,7 @@ import { createTable, importRows } from './lib/store.js';
 import { loadFlags, isOn } from './lib/flags.js';
 import { readStatement, StatementError } from './lib/statement.js';
 import { readUpload, UploadError } from './lib/upload.js';
+import { listMonths } from './lib/months.js';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -54,7 +55,14 @@ export function createApp({ db, flags }) {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname === '/') {
       const { n } = db.prepare('SELECT COUNT(*) AS n FROM transactions').get();
-      const body = n === 0 ? '<p>Nothing imported yet</p>' : `<p>${n} transactions imported</p>`;
+      let body = n === 0 ? '<p>Nothing imported yet</p>' : `<p>${n} transactions imported</p>`;
+      if (isOn(flags, 'bank-statement-import')) {
+        const months = listMonths(db);
+        if (months.length > 0) {
+          const items = months.map((m) => `<li><a href="/month?m=${m}">${m}</a></li>`).join('\n');
+          body += `\n<ul>\n${items}\n</ul>`;
+        }
+      }
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(page(body));
       return;
