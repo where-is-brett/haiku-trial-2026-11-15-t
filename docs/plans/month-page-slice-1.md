@@ -1,6 +1,6 @@
 # Month page, slice 1: Totals by category Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `/month?m=YYYY-MM` shows one row per category that has transactions in that month, each with its total, a grand total row, and links to the months either side. A malformed `m` gets a plain error. A month with no transactions shows `No transactions this month` and still has the links. The page is behind the `month-page` feature flag, which stays off.
 
