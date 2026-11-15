@@ -25,7 +25,7 @@ test('the month page shows each category total and the grand total', () => {
   assert.equal(status, 200);
   assert.equal(type, 'text/html; charset=utf-8');
   assert.match(body, /<td>Groceries<\/td><td data-category="groceries" data-total="40\.20">40\.20<\/td>/);
-  assert.match(body, /data-category="eating_out" data-total="18\.00"/);
+  assert.match(body, /data-category="dining" data-total="18\.00"/);
   assert.match(body, /data-category="income" data-total="-3010\.00"/);
   assert.match(body, /data-category="all" data-total="-2951\.80"/);
 });

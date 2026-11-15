@@ -32,7 +32,7 @@ test('monthTotals sums each category for the month, in category order', () => {
   assert.deepEqual(monthTotals(rows, '2026-08'), {
     rows: [
       { key: 'groceries', label: 'Groceries', cents: 4020 },
-      { key: 'eating_out', label: 'Eating out', cents: 1800 },
+      { key: 'dining', label: 'Eating out', cents: 1800 },
     ],
     totalCents: 5820,
     count: 3,
