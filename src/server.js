@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { createTable } from './lib/store.js';
-import { loadFlags } from './lib/flags.js';
+import { loadFlags, isOn } from './lib/flags.js';
 
 // Port and database path from the environment, with the defaults.
 export function configFromEnv(env) {
@@ -41,7 +41,18 @@ export function createApp({ db, flags }) {
       res.end(page(body));
       return;
     }
-    res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+    if (url.pathname === '/import' && req.method === 'GET' && isOn(flags, 'bank-statement-import')) {
+      const body = `<h2>Import a bank statement</h2>
+<p>Upload a statement</p>
+<form method="post" action="/import" enctype="multipart/form-data">
+<input type="file" name="statement">
+<button type="submit">Import</button>
+</form>`;
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(page(body));
+      return;
+    }
+    res.writeHead(404,{ 'content-type': 'text/plain; charset=utf-8' });
     res.end('Not found');
   });
 }
