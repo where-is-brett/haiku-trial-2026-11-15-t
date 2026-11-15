@@ -159,12 +159,12 @@ import { readStatement, StatementError } from '../src/lib/statement.js';
 const H = 'Date,Description,Amount\n';
 
 test('brackets are money out, minus signs are money out, commas group thousands', () => {
-  const rows = readStatement(`${H}19/08/2026,Marlowe,(40.00)\n25/08/2026,Payroll,-2100.00\n01/09/2026,Pay,1,234.50\n`);
+  const rows = readStatement(`${H}19/08/2026,Marlowe,(40.00)\n25/08/2026,Payroll,-2100.00\n01/09/2026,Pay,"1,234.50"\n`);
   assert.deepEqual(rows.map((r) => r.cents), [-4000, -210000, 123450]);
 });
 
 test('brackets with a comma group are money out', () => {
-  assert.equal(readStatement(`${H}01/09/2026,Rent,(1,234.50)\n`)[0].cents, -123450);
+  assert.equal(readStatement(`${H}01/09/2026,Rent,"(1,234.50)"\n`)[0].cents, -123450);
 });
 
 test('a date is read as ISO, and a leap day is checked', () => {
