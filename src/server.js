@@ -3,8 +3,12 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { createTable } from './lib/store.js';
+import { createTable, importRows } from './lib/store.js';
 import { loadFlags, isOn } from './lib/flags.js';
+import { readStatement, StatementError } from './lib/statement.js';
+import { readUpload, UploadError } from './lib/upload.js';
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 // Port and database path from the environment, with the defaults.
 export function configFromEnv(env) {
@@ -26,6 +30,20 @@ ${body}
 </body>
 </html>
 `;
+}
+
+// Reads an uploaded statement and stores its rows; answers with the page to show.
+async function importStatement(req, db) {
+  try {
+    const text = await readUpload(req, { maxBytes: MAX_UPLOAD_BYTES });
+    const rows = readStatement(text);
+    const { added, skipped } = importRows(db, rows);
+    return { status: 200, body: `<p>Added ${added}, skipped ${skipped}</p>` };
+  } catch (error) {
+    if (error instanceof UploadError) return { status: error.status, body: `<p>${error.message}</p>` };
+    if (error instanceof StatementError) return { status: 400, body: `<p>${error.message}</p>` };
+    throw error;
+  }
 }
 
 // The server, not yet listening.
@@ -50,6 +68,22 @@ export function createApp({ db, flags }) {
 </form>`;
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(page(body));
+      return;
+    }
+    if (url.pathname === '/import' && req.method === 'POST' && isOn(flags, 'bank-statement-import')) {
+      importStatement(req, db).then(
+        ({ status, body }) => {
+          const headers = { 'content-type': 'text/html; charset=utf-8' };
+          // A refused oversized body is left unread, so the connection closes after it.
+          if (status === 413) headers.connection = 'close';
+          res.writeHead(status, headers);
+          res.end(page(body));
+        },
+        () => {
+          res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });
+          res.end('Server error');
+        },
+      );
       return;
     }
     res.writeHead(404,{ 'content-type': 'text/plain; charset=utf-8' });
