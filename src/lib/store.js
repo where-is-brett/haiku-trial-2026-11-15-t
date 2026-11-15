@@ -18,20 +18,27 @@ export function importRows(db, rows) {
   let added = 0;
   let skipped = 0;
 
-  for (const r of rows) {
-    const description = r.description.trim();
-    const key = JSON.stringify([r.date, description, r.cents]);
-    if (!remaining.has(key)) {
-      remaining.set(key, countStored.get(r.date, description, r.cents).n);
+  db.exec('BEGIN');
+  try {
+    for (const r of rows) {
+      const description = r.description.trim();
+      const key = JSON.stringify([r.date, description, r.cents]);
+      if (!remaining.has(key)) {
+        remaining.set(key, countStored.get(r.date, description, r.cents).n);
+      }
+      const left = remaining.get(key);
+      if (left > 0) {
+        remaining.set(key, left - 1);
+        skipped += 1;
+      } else {
+        insert.run(r.date, description, r.cents);
+        added += 1;
+      }
     }
-    const left = remaining.get(key);
-    if (left > 0) {
-      remaining.set(key, left - 1);
-      skipped += 1;
-    } else {
-      insert.run(r.date, description, r.cents);
-      added += 1;
-    }
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
   }
 
   return { added, skipped };

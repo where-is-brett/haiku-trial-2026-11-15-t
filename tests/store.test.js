@@ -60,3 +60,12 @@ test('the sample statement imports as 128 added, then 128 skipped', () => {
   assert.deepEqual(importRows(db, rows), { added: 128, skipped: 0 });
   assert.deepEqual(importRows(db, rows), { added: 0, skipped: 128 });
 });
+
+test('a failure part-way stores nothing from that file', () => {
+  const db = newDb();
+  importRows(db, [row('2026-08-01', 'Before', 100)]);
+  db.exec("CREATE TRIGGER fail_on_boom BEFORE INSERT ON transactions WHEN NEW.description = 'BOOM' BEGIN SELECT RAISE(ABORT, 'boom'); END;");
+  const file = [row('2026-08-02', 'First', 200), row('2026-08-03', 'BOOM', 300), row('2026-08-04', 'Last', 400)];
+  assert.throws(() => importRows(db, file), /boom/);
+  assert.equal(count(db), 1);
+});
