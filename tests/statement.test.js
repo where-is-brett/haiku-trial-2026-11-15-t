@@ -12,13 +12,18 @@ test('brackets are money out, minus signs are money out, commas group thousands'
   assert.deepEqual(rows.map((r) => r.cents), [-4000, -210000, 123450]);
 });
 
-test('a refund written with REF or REFUND and no sign is money back', () => {
-  const rows = readStatement(`${H}02/08/2026,Hollis Insurance REF 7386,40.00\n15/09/2026,Marlowe Homewares REFUND,40.00\n`);
-  assert.deepEqual(rows.map((r) => r.cents), [-4000, -4000]);
+test('a refund marked REFUND with no sign is money back', () => {
+  const rows = readStatement(`${H}15/09/2026,Marlowe Homewares REFUND,40.00\n20/10/2026,Quillon Books REFUND,12.50\n`);
+  assert.deepEqual(rows.map((r) => r.cents), [-4000, -1250]);
+});
+
+test('a bill with a REF reference number and no sign stays positive', () => {
+  const rows = readStatement(`${H}02/08/2026,Hollis Insurance REF 7386,40.08\n03/08/2026,Brightfield Power REF 5771,87.14\n`);
+  assert.deepEqual(rows.map((r) => r.cents), [4008, 8714]);
 });
 
 test('a refund already marked money out stays negative, and a purchase stays positive', () => {
-  const rows = readStatement(`${H}02/08/2026,Hollis REF 7386,(40.00)\n03/08/2026,Hollis REF 7387,-40.00\n04/08/2026,Pennywhistle Market,91.48\n`);
+  const rows = readStatement(`${H}02/08/2026,Marlowe Homewares REFUND,(40.00)\n03/08/2026,Hollis REF 7387,-40.00\n04/08/2026,Pennywhistle Market,91.48\n`);
   assert.deepEqual(rows.map((r) => r.cents), [-4000, -4000, 9148]);
 });
 
