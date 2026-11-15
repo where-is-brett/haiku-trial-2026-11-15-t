@@ -54,8 +54,8 @@ function readRow(raw, line) {
   let fields;
   try {
     fields = splitFields(raw);
-  } catch {
-    throw fail('unclosed quote');
+  } catch (error) {
+    throw fail(error.message);
   }
   if (fields.length !== 3) throw fail('needs three fields');
 
@@ -120,6 +120,12 @@ function splitFields(line) {
         }
       }
       if (!closed) throw new Error('unclosed quote');
+      let next = i;
+      while (line[next] === ' ') next += 1;
+      if (next < line.length && line[next] !== ',') {
+        throw new Error('unexpected text after a closing quote');
+      }
+      i = next;
     } else {
       field += ch;
       i += 1;

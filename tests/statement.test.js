@@ -62,3 +62,12 @@ test('the sample statement reads as 128 rows', () => {
   const text = fs.readFileSync(fileURLToPath(new URL('../data/sample-statement.csv', import.meta.url)), 'utf8');
   assert.equal(readStatement(text).length, 128);
 });
+
+test('text after a closing quote is refused, not joined into the field', () => {
+  assert.throws(() => readStatement(`${H}02/08/2026,A,"1"2.5\n`), (e) => e instanceof StatementError && e.line === 2 && /Line 2: unexpected text after a closing quote/.test(e.message));
+  assert.throws(() => readStatement(`${H}02/08/2026,"Joe's "Pizza" shop",1.00\n`), (e) => e instanceof StatementError && e.line === 2 && /Line 2: unexpected text after a closing quote/.test(e.message));
+});
+
+test('spaces after a closing quote, before the comma, are allowed', () => {
+  assert.equal(readStatement(`${H}02/08/2026,"A" ,1.00\n`)[0].description, 'A');
+});
