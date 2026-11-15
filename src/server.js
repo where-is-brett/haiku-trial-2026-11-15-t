@@ -1,12 +1,18 @@
 // src/server.js
 import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { createTable } from './lib/store.js';
+import { loadFlags } from './lib/flags.js';
 
-const port = Number(process.env.PORT ?? 3000);
-const db = new DatabaseSync(process.env.LEDGER_DB ?? 'ledger.db');
-db.exec(
-  'CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY, date TEXT, description TEXT, cents INTEGER)',
-);
+// Port and database path from the environment, with the defaults.
+export function configFromEnv(env) {
+  return {
+    port: Number(env.PORT ?? 3000),
+    dbPath: env.LEDGER_DB ?? 'ledger.db',
+  };
+}
 
 function page(body) {
   return `<!doctype html>
@@ -22,19 +28,34 @@ ${body}
 `;
 }
 
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/') {
-    const { n } = db.prepare('SELECT COUNT(*) AS n FROM transactions').get();
-    const body = n === 0 ? '<p>Nothing imported yet</p>' : `<p>${n} transactions imported</p>`;
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(page(body));
-    return;
-  }
-  res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-  res.end('Not found');
-});
+// The server, not yet listening.
+export function createApp({ db, flags }) {
+  createTable(db);
 
-server.listen(port, () => {
-  console.log(`listening on ${server.address().port}`);
-});
+  return http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    if (url.pathname === '/') {
+      const { n } = db.prepare('SELECT COUNT(*) AS n FROM transactions').get();
+      const body = n === 0 ? '<p>Nothing imported yet</p>' : `<p>${n} transactions imported</p>`;
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(page(body));
+      return;
+    }
+    res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+    res.end('Not found');
+  });
+}
+
+function main() {
+  const { port, dbPath } = configFromEnv(process.env);
+  const flagsPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'config', 'feature-flags.json');
+  const db = new DatabaseSync(dbPath);
+  const server = createApp({ db, flags: loadFlags(flagsPath) });
+  server.listen(port, () => {
+    console.log(`listening on ${server.address().port}`);
+  });
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
