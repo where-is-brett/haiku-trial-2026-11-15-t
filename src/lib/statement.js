@@ -5,6 +5,7 @@ import { parseDate } from './dates.js';
 const HEADER = ['Date', 'Description', 'Amount'];
 const DATE_SHAPE = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 const AMOUNT_SHAPE = /^-?(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/;
+const REFUND_SHAPE = /\bREF(UND)?\b/i;
 
 // Raised for a text that cannot be read. `line` is the 1-based line number,
 // or null for a file-level refusal.
@@ -68,7 +69,9 @@ function readRow(raw, line) {
 
   const amountDigits = amountText.replace(/^\((.*)\)$/, '-$1');
   if (!AMOUNT_SHAPE.test(amountDigits)) throw fail('amount is not a number');
-  const cents = parseAmount(amountDigits.replace(/,/g, ''));
+  const parsed = parseAmount(amountDigits.replace(/,/g, ''));
+  // A refund written without a sign or brackets is money back, not spending.
+  const cents = REFUND_SHAPE.test(descriptionText) && parsed > 0 ? -parsed : parsed;
 
   return { line, date, description: descriptionText, cents: cents === 0 ? 0 : cents };
 }
