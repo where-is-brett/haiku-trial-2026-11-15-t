@@ -8,6 +8,7 @@ import { loadFlags, isOn } from './lib/flags.js';
 import { readStatement, StatementError } from './lib/statement.js';
 import { readUpload, UploadError } from './lib/upload.js';
 import { listMonths } from './lib/months.js';
+import { exportCsv, isMonth } from './lib/export.js';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -92,6 +93,21 @@ export function createApp({ db, flags }) {
           res.end('Server error');
         },
       );
+      return;
+    }
+    if (url.pathname === '/export' && req.method === 'GET' && isOn(flags, 'month-export')) {
+      const months = url.searchParams.getAll('m');
+      if (months.length !== 1 || !isMonth(months[0])) {
+        res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+        res.end('m must be a month as YYYY-MM');
+        return;
+      }
+      const month = months[0];
+      res.writeHead(200, {
+        'content-type': 'text/csv; charset=utf-8',
+        'content-disposition': `attachment; filename="spending-${month}.csv"`,
+      });
+      res.end(exportCsv(db, month));
       return;
     }
     res.writeHead(404,{ 'content-type': 'text/plain; charset=utf-8' });

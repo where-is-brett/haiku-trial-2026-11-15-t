@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { csvField, isMonth, categoryLabel, exportCsv } from '../src/lib/export.js';
 import { createTable } from '../src/lib/store.js';
+import { createApp } from '../src/server.js';
 
 // A fresh in-memory table holding each [date, description, cents] row, in order.
 const withRows = (rows) => {
@@ -71,4 +72,60 @@ test('an income row is written negative, and a zero amount is 0.00', () => {
 test('a month with no transactions gives the header row only', () => {
   const db = withRows([['2026-09-01', 'Lowtide Grocers', 580]]);
   assert.equal(exportCsv(db, '2026-08'), 'Date,Description,Amount,Category\r\n');
+});
+
+// Starts the app on a free port, runs the check, and always closes the server.
+const withServer = async (db, flags, check) => {
+  const server = createApp({ db, flags });
+  await new Promise((resolve) => server.listen(0, resolve));
+  try {
+    await check(`http://localhost:${server.address().port}`);
+  } finally {
+    server.close();
+  }
+};
+
+test('/export answers 404 while the month-export flag is off', async () => {
+  const db = withRows([['2026-08-02', 'Pennywhistle Market', 10152]]);
+  await withServer(db, {}, async (base) => {
+    const res = await fetch(`${base}/export?m=2026-08`);
+    assert.equal(res.status, 404);
+  });
+});
+
+test('/export with the flag on sends the month as a CSV download', async () => {
+  const db = withRows([
+    ['2026-08-02', 'Pennywhistle Market', 10152],
+    ['2026-09-01', 'Lowtide Grocers', 580],
+  ]);
+  await withServer(db, { 'month-export': true }, async (base) => {
+    const res = await fetch(`${base}/export?m=2026-08`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'text/csv; charset=utf-8');
+    assert.equal(res.headers.get('content-disposition'), 'attachment; filename="spending-2026-08.csv"');
+    assert.equal(await res.text(), exportCsv(db, '2026-08'));
+  });
+});
+
+test('/export with a bad m gives a plain error and no file', async () => {
+  const db = withRows([['2026-08-02', 'Pennywhistle Market', 10152]]);
+  const queries = ['m=2026-13', 'm=2026-8', 'm=', '', 'm=2026-08&m=2026-09'];
+  await withServer(db, { 'month-export': true }, async (base) => {
+    for (const query of queries) {
+      const res = await fetch(`${base}/export?${query}`);
+      assert.equal(res.status, 400, query);
+      assert.equal(res.headers.get('content-type'), 'text/plain; charset=utf-8', query);
+      assert.equal(res.headers.get('content-disposition'), null, query);
+      assert.equal(await res.text(), 'm must be a month as YYYY-MM', query);
+    }
+  });
+});
+
+test('/export for a month with no rows gives the header row only', async () => {
+  const db = withRows([['2026-09-01', 'Lowtide Grocers', 580]]);
+  await withServer(db, { 'month-export': true }, async (base) => {
+    const res = await fetch(`${base}/export?m=2026-08`);
+    assert.equal(res.status, 200);
+    assert.equal(await res.text(), 'Date,Description,Amount,Category\r\n');
+  });
 });
