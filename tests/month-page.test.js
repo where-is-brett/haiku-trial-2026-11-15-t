@@ -168,3 +168,26 @@ test('the month list and total use the row\'s category', async () => {
     server.close();
   }
 });
+
+test('after a move, the month total moves the amount to the new category', async () => {
+  const db = new DatabaseSync(':memory:');
+  createTable(db);
+  db.prepare('INSERT INTO transactions (date, description, cents) VALUES (?, ?, ?)')
+    .run('2026-08-02', 'Greenbarrow Fresh', -4500);
+  const { server, base } = await serveMonth(db, ON);
+  try {
+    const before = await (await fetch(`${base}/month?m=2026-08`)).text();
+    assert.match(before, /Groceries/);
+    assert.match(before, /<td data-category="groceries" data-total="-45\.00">/);
+
+    const res = await postEdit(base, { id: '1', category: 'dining' });
+    assert.equal(res.status, 303);
+
+    const after = await (await fetch(`${base}/month?m=2026-08`)).text();
+    assert.match(after, /<td data-category="dining" data-total="-45\.00">/);
+    assert.doesNotMatch(after, /data-category="groceries"/);
+    assert.doesNotMatch(after, /Groceries/);
+  } finally {
+    server.close();
+  }
+});
