@@ -1,6 +1,6 @@
 // src/month-page.js
 import { formatCents } from './lib/money.js';
-import { isMonth, shiftMonth, monthTotals } from './lib/month.js';
+import { isMonth, shiftMonth, monthTotals, withChanges } from './lib/month.js';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -17,7 +17,8 @@ export function monthPage(db, url) {
   }
 
   const transactions = db.prepare('SELECT date, description, cents FROM transactions').all();
-  const { rows, totalCents, count } = monthTotals(transactions, m);
+  const current = monthTotals(transactions, m);
+  const { rows, totalCents, totalChange, count } = withChanges(current, monthTotals(transactions, shiftMonth(m, -1)));
   const [year, month] = m.split('-').map(Number);
 
   const heading = `<h2>${MONTH_NAMES[month - 1]} ${year}</h2>`;
@@ -30,12 +31,13 @@ export function monthPage(db, url) {
   }
 
   const cell = (key, cents) => `<td data-category="${key}" data-total="${formatCents(cents)}">${formatCents(cents)}</td>`;
-  const categoryRows = rows.map((r) => `<tr><td>${r.label}</td>${cell(r.key, r.cents)}</tr>`);
-  const allRow = `<tr><th>All categories</th>${cell('all', totalCents)}</tr>`;
+  const changeCell = (cents) => `<td data-change="${formatCents(cents)}">${formatCents(cents)}</td>`;
+  const categoryRows = rows.map((r) => `<tr><td>${r.label}</td>${cell(r.key, r.cents)}${changeCell(r.change)}</tr>`);
+  const allRow = `<tr><th>All categories</th>${cell('all', totalCents)}${changeCell(totalChange)}</tr>`;
 
   const table = [
     '<table>',
-    '<thead><tr><th>Category</th><th>Total</th></tr></thead>',
+    '<thead><tr><th>Category</th><th>Total</th><th>Change</th></tr></thead>',
     '<tbody>',
     ...categoryRows,
     allRow,
