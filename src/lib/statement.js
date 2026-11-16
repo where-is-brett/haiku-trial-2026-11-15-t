@@ -5,7 +5,7 @@ import { parseDate } from './dates.js';
 const HEADER = ['Date', 'Description', 'Amount'];
 const DATE_SHAPE = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 const AMOUNT_SHAPE = /^-?(\d{1,3}(,\d{3})+|\d+)(\.\d{1,2})?$/;
-const REFUND_SHAPE = /\bREFUND\b/;
+export const REFUND_SHAPE = /\bREFUND\b/;
 
 // Raised for a text that cannot be read. `line` is the 1-based line number,
 // or null for a file-level refusal.
