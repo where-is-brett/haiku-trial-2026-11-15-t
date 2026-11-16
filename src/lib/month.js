@@ -17,11 +17,18 @@ export function shiftMonth(m, delta) {
   return `${shiftedYear}-${String(shiftedMonth).padStart(2, '0')}`;
 }
 
+// The transactions dated in month m, in date, id order.
+export function transactionsIn(transactions, m) {
+  return transactions
+    .filter((t) => monthOf(t.date) === m)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id));
+}
+
 // Totals the transactions dated in month m, by category, in CATEGORIES order.
 // Each row is keyed by categoryFor: its stored category, else its shop's.
 // Income counts as negative whatever its stored sign.
 export function monthTotals(transactions, m) {
-  const inMonth = transactions.filter((t) => monthOf(t.date) === m);
+  const inMonth = transactionsIn(transactions, m);
   const sums = new Map();
   let totalCents = 0;
   for (const t of inMonth) {

@@ -1,6 +1,10 @@
 // src/month-page.js
 import { formatCents } from './lib/money.js';
-import { isMonth, shiftMonth, monthTotals } from './lib/month.js';
+import { escapeHtml } from './lib/html.js';
+import { CATEGORIES } from './lib/categories.js';
+import { categoryFor } from './lib/store.js';
+import { isMonth, shiftMonth, monthTotals, transactionsIn } from './lib/month.js';
+import { isOn } from './lib/flags.js';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -8,14 +12,15 @@ const MONTH_NAMES = [
 ];
 
 // Builds the month page for the m query value. The body is the page's inner
-// HTML; server.js wraps it. Only m reaches the HTML, and it has passed isMonth
-// (digits and a hyphen only), so nothing here needs escaping.
-export function monthPage(db, url) {
+// HTML; server.js wraps it. Every description is escaped with escapeHtml. The
+// edit links show only when the edit-category flag is on.
+export function monthPage(db, url, flags) {
   const m = url.searchParams.get('m');
   if (!isMonth(m)) {
     return { status: 400, type: 'text/plain; charset=utf-8', body: 'Month must look like YYYY-MM' };
   }
 
+  const editLinks = isOn(flags, 'edit-category');
   const transactions = db.prepare('SELECT id, date, description, cents, category FROM transactions').all();
   const { rows, totalCents, count } = monthTotals(transactions, m);
   const [year, month] = m.split('-').map(Number);
@@ -43,5 +48,20 @@ export function monthPage(db, url) {
     '</table>',
   ].join('\n');
 
-  return { status: 200, type: 'text/html; charset=utf-8', body: `${heading}\n${links}\n${table}` };
+  const labelOf = (key) => CATEGORIES.find((c) => c.key === key)?.label ?? escapeHtml(key);
+  const listRow = (t) => {
+    const link = editLinks ? `<td><a href="/edit?id=${t.id}">Change category</a></td>` : '';
+    return `<tr><td>${t.date}</td><td>${escapeHtml(t.description)}</td><td>${formatCents(t.cents)}</td><td>${labelOf(categoryFor(t))}</td>${link}</tr>`;
+  };
+  const listHead = `<tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th>${editLinks ? '<th></th>' : ''}</tr>`;
+  const list = [
+    '<table>',
+    `<thead>${listHead}</thead>`,
+    '<tbody>',
+    ...transactionsIn(transactions, m).map(listRow),
+    '</tbody>',
+    '</table>',
+  ].join('\n');
+
+  return { status: 200, type: 'text/html; charset=utf-8', body: `${heading}\n${links}\n${table}\n${list}` };
 }
