@@ -57,7 +57,8 @@ export function createApp({ db, flags }) {
     if (url.pathname === '/') {
       const { n } = db.prepare('SELECT COUNT(*) AS n FROM transactions').get();
       let body = n === 0 ? '<p>Nothing imported yet</p>' : `<p>${n} transactions imported</p>`;
-      if (isOn(flags, 'bank-statement-import')) {
+      // The month links open the month page, so they show only when that page is on.
+      if (isOn(flags, 'bank-statement-import') && isOn(flags, 'month-page')) {
         const months = listMonths(db);
         if (months.length > 0) {
           const items = months.map((m) => `<li><a href="/month?m=${m}">${m}</a></li>`).join('\n');
