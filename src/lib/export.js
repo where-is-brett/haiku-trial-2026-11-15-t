@@ -2,6 +2,7 @@
 
 import { CATEGORIES, categoryOf } from './categories.js';
 import { formatCents } from './money.js';
+import { categoryFor } from './store.js';
 
 // Quotes a text as one CSV field when it holds a comma, a double quote or a
 // line break, doubling any double quote inside it.
@@ -33,17 +34,18 @@ export function categoryLabel(description) {
 // is written negative whatever its stored sign.
 export function exportCsv(db, month) {
   const rows = db
-    .prepare('SELECT id, date, description, cents FROM transactions WHERE substr(date, 1, 7) = ? ORDER BY date, id')
+    .prepare('SELECT id, date, description, cents, category FROM transactions WHERE substr(date, 1, 7) = ? ORDER BY date, id')
     .all(month);
   const lines = ['Date,Description,Amount,Category'];
   for (const row of rows) {
-    const income = categoryOf(row.description) === 'income';
-    const cents = income ? -Math.abs(row.cents) : row.cents;
+    const key = categoryFor(row);
+    const cents = key === 'income' ? -Math.abs(row.cents) : row.cents;
+    const entry = CATEGORIES.find((category) => category.key === key);
     lines.push([
       row.date,
       csvField(row.description),
       formatCents(cents),
-      categoryLabel(row.description),
+      entry.label,
     ].join(','));
   }
   return lines.map((line) => `${line}\r\n`).join('');

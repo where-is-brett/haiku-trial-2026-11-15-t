@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { csvField, isMonth, categoryLabel, exportCsv } from '../src/lib/export.js';
-import { createTable } from '../src/lib/store.js';
+import { createTable, setCategory } from '../src/lib/store.js';
+import { monthTotals } from '../src/lib/month.js';
 import { createApp } from '../src/server.js';
 
 // A fresh in-memory table holding each [date, description, cents] row, in order.
@@ -72,6 +73,33 @@ test('an income row is written negative, and a zero amount is 0.00', () => {
 test('a month with no transactions gives the header row only', () => {
   const db = withRows([['2026-09-01', 'Lowtide Grocers', 580]]);
   assert.equal(exportCsv(db, '2026-08'), 'Date,Description,Amount,Category\r\n');
+});
+
+test('a moved row exports its stored category and sign, as the month page shows them', () => {
+  const db = withRows([
+    ['2026-08-02', 'Greenbarrow Fresh', -4500],
+    ['2026-08-04', 'Pennywhistle Market', 10152],
+  ]);
+  const idOf = (description) =>
+    db.prepare('SELECT id FROM transactions WHERE description = ?').get(description).id;
+  setCategory(db, idOf('Greenbarrow Fresh'), 'dining');
+  setCategory(db, idOf('Pennywhistle Market'), 'income');
+
+  assert.equal(
+    exportCsv(db, '2026-08'),
+    'Date,Description,Amount,Category\r\n'
+      + '2026-08-02,Greenbarrow Fresh,-45.00,Eating out\r\n'
+      + '2026-08-04,Pennywhistle Market,-101.52,Income\r\n',
+  );
+
+  const totals = monthTotals(
+    db.prepare('SELECT date, description, cents, category FROM transactions').all(),
+    '2026-08',
+  );
+  const eatingOut = totals.rows.find((r) => r.label === 'Eating out');
+  const income = totals.rows.find((r) => r.label === 'Income');
+  assert.equal(eatingOut.cents, -4500);
+  assert.equal(income.cents, -10152);
 });
 
 // Starts the app on a free port, runs the check, and always closes the server.
