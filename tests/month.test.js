@@ -1,7 +1,7 @@
 // tests/month.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isMonth, shiftMonth, monthTotals } from '../src/lib/month.js';
+import { isMonth, shiftMonth, monthTotals, withChanges } from '../src/lib/month.js';
 
 const t = (date, description, cents) => ({ date, description, cents });
 
@@ -87,4 +87,49 @@ test('other comes last, after the named categories', () => {
     monthTotals(rows, '2026-08').rows.map((r) => r.key),
     ['groceries', 'other'],
   );
+});
+
+test('withChanges gives each category its change from last month', () => {
+  const current = monthTotals([t('2026-08-02', 'Greenbarrow Fresh', 4520)], '2026-08');
+  const previous = monthTotals([t('2026-07-02', 'Greenbarrow Fresh', 9999)], '2026-07');
+  assert.deepEqual(withChanges(current, previous), {
+    rows: [{ key: 'groceries', label: 'Groceries', cents: 4520, change: -5479 }],
+    totalCents: 4520,
+    totalChange: -5479,
+    count: 1,
+  });
+});
+
+test('a category new this month has a change equal to its whole total', () => {
+  const current = monthTotals([t('2026-08-09', 'Pasta, Pizza & Co', 1800)], '2026-08');
+  const previous = monthTotals([], '2026-07');
+  assert.deepEqual(withChanges(current, previous).rows, [
+    { key: 'dining', label: 'Eating out', cents: 1800, change: 1800 },
+  ]);
+});
+
+test('a category missing this month shows 0 and a change equal to minus last month', () => {
+  const current = monthTotals([t('2026-08-02', 'Greenbarrow Fresh', 4520)], '2026-08');
+  const previous = monthTotals([t('2026-07-12', 'Waverly Fuel Stop', 1250)], '2026-07');
+  assert.deepEqual(withChanges(current, previous).rows, [
+    { key: 'groceries', label: 'Groceries', cents: 4520, change: 4520 },
+    { key: 'transport', label: 'Transport', cents: 0, change: -1250 },
+  ]);
+});
+
+test('a category in neither month does not appear, and the rows follow category order', () => {
+  const current = monthTotals([t('2026-08-01', 'Unknown Shop', 500), t('2026-08-02', 'Greenbarrow Fresh', 100)], '2026-08');
+  const previous = monthTotals([t('2026-07-02', 'Waverly Fuel Stop', 200)], '2026-07');
+  assert.deepEqual(
+    withChanges(current, previous).rows.map((r) => r.key),
+    ['groceries', 'transport', 'other'],
+  );
+});
+
+test('the grand total change is this month minus last month, and equals the sum of the row changes', () => {
+  const current = monthTotals([t('2026-08-02', 'Greenbarrow Fresh', 4520), t('2026-08-10', 'Brightwave Payroll', 300000)], '2026-08');
+  const previous = monthTotals([t('2026-07-02', 'Greenbarrow Fresh', 9999)], '2026-07');
+  const result = withChanges(current, previous);
+  assert.equal(result.totalChange, current.totalCents - previous.totalCents);
+  assert.equal(result.rows.reduce((sum, r) => sum + r.change, 0), result.totalChange);
 });

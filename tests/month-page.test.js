@@ -17,6 +17,7 @@ const fixture = () => {
   add.run('2026-08-10', 'Brightwave Payroll', 300000);
   add.run('2026-08-11', 'Tidepool Interest', -1000);
   add.run('2026-09-01', 'Greenbarrow Fresh', 9999);
+  add.run('2026-07-12', 'Waverly Fuel Stop', 1250);
   return db;
 };
 const get = (db, m) => monthPage(db, new URL(`http://localhost/month?m=${m}`), {});
@@ -34,14 +35,46 @@ test('the month page shows each category total and the grand total', () => {
 test('every total cell carries a category and a plain decimal', () => {
   const { body } = get(fixture(), '2026-08');
   const cells = [...body.matchAll(/data-category="([^"]+)" data-total="([^"]*)"/g)];
-  assert.equal(cells.length, 4);
+  assert.equal(cells.length, 5);
   for (const [, , total] of cells) assert.match(total, /^-?\d+\.\d{2}$/);
 });
 
-test('a category with no transactions this month does not appear', () => {
+test('a category with no transactions in either month does not appear', () => {
   const { body } = get(fixture(), '2026-08');
-  assert.doesNotMatch(body, /data-category="transport"/);
-  assert.doesNotMatch(body, /Transport/);
+  assert.doesNotMatch(body, /data-category="bills"/);
+  assert.doesNotMatch(body, /Bills/);
+});
+
+test('each category row carries its change from last month', () => {
+  const { body } = get(fixture(), '2026-08');
+  assert.match(body, /data-category="groceries" data-total="40\.20">40\.20<\/td><td data-change="-59\.79">/);
+  assert.match(body, /data-category="dining" data-total="18\.00">18\.00<\/td><td data-change="18\.00">/);
+  assert.match(body, /data-category="income" data-total="-3010\.00">-3010\.00<\/td><td data-change="-3010\.00">/);
+});
+
+test('a category missing this month shows 0.00 and minus last month as its change', () => {
+  const { body } = get(fixture(), '2026-08');
+  assert.match(body, /<td>Transport<\/td><td data-category="transport" data-total="0\.00">0\.00<\/td><td data-change="-12\.50">/);
+});
+
+test('the grand total change is this month minus last month', () => {
+  const { body } = get(fixture(), '2026-08');
+  assert.match(body, /data-category="all" data-total="-2951\.80">-2951\.80<\/td><td data-change="-3064\.29">/);
+});
+
+test('every change cell carries a plain decimal and there is one per row', () => {
+  const { body } = get(fixture(), '2026-08');
+  const cells = [...body.matchAll(/data-change="([^"]*)"/g)];
+  assert.equal(cells.length, 5);
+  for (const [, change] of cells) assert.match(change, /^-?\d+\.\d{2}$/);
+});
+
+test('the change crosses a year boundary', () => {
+  const db = fixture();
+  db.prepare('INSERT INTO transactions (date, description, cents) VALUES (?, ?, ?)').run('2026-12-03', 'Greenbarrow Fresh', 1000);
+  db.prepare('INSERT INTO transactions (date, description, cents) VALUES (?, ?, ?)').run('2027-01-04', 'Greenbarrow Fresh', 2500);
+  const { body } = get(db, '2027-01');
+  assert.match(body, /data-category="groceries" data-total="25\.00">25\.00<\/td><td data-change="15\.00">/);
 });
 
 test('the month links go to the month before and after', () => {

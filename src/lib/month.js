@@ -44,3 +44,20 @@ export function monthTotals(transactions, m) {
   }));
   return { rows, totalCents, count: inMonth.length };
 }
+
+// Joins this month's totals with last month's: one row per category in either
+// month, in CATEGORIES order, each with its change from the month before.
+export function withChanges(current, previous) {
+  const now = new Map(current.rows.map((r) => [r.key, r.cents]));
+  const before = new Map(previous.rows.map((r) => [r.key, r.cents]));
+  const rows = CATEGORIES.filter((c) => now.has(c.key) || before.has(c.key)).map((c) => {
+    const cents = now.get(c.key) ?? 0;
+    return { key: c.key, label: c.label, cents, change: cents - (before.get(c.key) ?? 0) };
+  });
+  return {
+    rows,
+    totalCents: current.totalCents,
+    totalChange: current.totalCents - previous.totalCents,
+    count: current.count,
+  };
+}
