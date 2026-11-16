@@ -11,6 +11,7 @@ import { listMonths } from './lib/months.js';
 import { CATEGORIES, isCategoryKey } from './lib/categories.js';
 import { formatCents } from './lib/money.js';
 import { monthPage } from './month-page.js';
+import { escapeHtml } from './lib/html.js';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const MAX_FORM_BYTES = 4 * 1024;
@@ -35,16 +36,6 @@ ${body}
 </body>
 </html>
 `;
-}
-
-// Escapes text for HTML, so a stored value is shown as written.
-function escapeHtml(text) {
-  return String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 // The edit page for the id in idText: { status, body }, body a full page.
@@ -209,7 +200,7 @@ export function createApp({ db, flags }) {
       return;
     }
     if (url.pathname === '/month' && isOn(flags, 'month-page')) {
-      const month = monthPage(db, url);
+      const month = monthPage(db, url, flags);
       res.writeHead(month.status, { 'content-type': month.type });
       res.end(month.type.startsWith('text/html') ? page(month.body) : month.body);
       return;
