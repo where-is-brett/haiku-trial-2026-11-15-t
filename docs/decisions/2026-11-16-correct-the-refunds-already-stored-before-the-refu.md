@@ -3,7 +3,7 @@
 
 - **Date:** 16 November 2026
 - **Piece:** month-page
-- **Options:** A. Correct the stored refund rows from a backup, and make a re-import match them (A one-time change to stored rows, after a backup, plus a small change to the import's duplicate check; Can be partly undone) · B. Leave stored rows as they are; fix only future imports (Nothing now; the month page keeps showing those refunds as spending; Can be undone)
+- **Options:** A. Correct the stored refund rows from a backup, and make a re-import match them (A one-time change to stored rows, after a backup; no change to the import, since a re-import already matches a corrected row; the script refuses to run where a refund already has its money-back row; Can be partly undone) · B. Leave stored rows as they are; fix only future imports (Nothing now; the month page keeps showing those refunds as spending; Can be undone)
 - **Recommended:** fix
 - **Chosen:** fix
 - **The director's words:** none

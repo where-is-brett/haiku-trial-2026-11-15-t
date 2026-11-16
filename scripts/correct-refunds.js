@@ -1,11 +1,10 @@
 // scripts/correct-refunds.js
 // Usage: node scripts/correct-refunds.js <path to the ledger database>
-// Copies the database to <path>.before-refund-fix first, then turns each stored
-// refund imported as spending into money back, in one transaction. Stop the
-// server before running it.
-import { copyFileSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
-import { correctStoredRefunds } from '../src/lib/refunds.js';
+// Copies the database to <path>.before-refund-fix, then turns each stored refund
+// imported as spending into money back, all in one transaction. It changes nothing
+// when a backup already exists or when a refund already has its money-back row.
+// Stop the server before running it.
+import { correctRefundFile } from '../src/lib/refunds.js';
 
 const dbPath = process.argv[2];
 if (!dbPath) {
@@ -13,16 +12,17 @@ if (!dbPath) {
   process.exit(1);
 }
 
-const backupPath = `${dbPath}.before-refund-fix`;
-copyFileSync(dbPath, backupPath);
-
-const db = new DatabaseSync(dbPath);
-db.exec('BEGIN');
+let result;
 try {
-  const changed = correctStoredRefunds(db);
-  db.exec('COMMIT');
-  console.log(`Corrected ${changed} stored refund rows. Backup: ${backupPath}`);
+  result = correctRefundFile(dbPath);
 } catch (error) {
-  db.exec('ROLLBACK');
-  throw error;
+  console.error(`Not changed. ${error.message}`);
+  process.exit(1);
 }
+if (result.duplicates) {
+  console.error('Not changed. These stored refunds already have a money-back row, so correcting them would count each twice:');
+  for (const d of result.duplicates) console.error(`  ${d.date}  ${d.description}  ${d.cents}`);
+  console.error('Remove one row of each pair by hand, then run this again.');
+  process.exit(2);
+}
+console.log(`Corrected ${result.changed} stored refund rows. Backup: ${result.backupPath}`);
