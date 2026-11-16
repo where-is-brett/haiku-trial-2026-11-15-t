@@ -15,11 +15,22 @@ const serve = async (flags, dates = []) => {
   return { server, base: `http://localhost:${server.address().port}` };
 };
 
-test('with the flag on, the months are listed newest first with links', async () => {
-  const { server, base } = await serve({ 'bank-statement-import': true }, ['2026-08-02', '2026-10-31']);
+test('with both flags on, the months are listed newest first with links', async () => {
+  const { server, base } = await serve({ 'bank-statement-import': true, 'month-page': true }, ['2026-08-02', '2026-10-31']);
   try {
     const body = await (await fetch(`${base}/`)).text();
     assert.match(body, /<a href="\/month\?m=2026-10">2026-10<\/a>[\s\S]*<a href="\/month\?m=2026-08">2026-08<\/a>/);
+  } finally {
+    server.close();
+  }
+});
+
+test('with the import flag on and the month page off, the home page has no month links', async () => {
+  const { server, base } = await serve({ 'bank-statement-import': true, 'month-page': false }, ['2026-08-02']);
+  try {
+    const body = await (await fetch(`${base}/`)).text();
+    assert.doesNotMatch(body, /\/month\?m=/);
+    assert.match(body, /1 transactions imported/);
   } finally {
     server.close();
   }
