@@ -10,6 +10,7 @@ import { readUpload, UploadError } from './lib/upload.js';
 import { listMonths } from './lib/months.js';
 import { CATEGORIES, isCategoryKey } from './lib/categories.js';
 import { formatCents } from './lib/money.js';
+import { monthPage } from './month-page.js';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const MAX_FORM_BYTES = 4 * 1024;
@@ -141,7 +142,8 @@ export function createApp({ db, flags }) {
     if (url.pathname === '/') {
       const { n } = db.prepare('SELECT COUNT(*) AS n FROM transactions').get();
       let body = n === 0 ? '<p>Nothing imported yet</p>' : `<p>${n} transactions imported</p>`;
-      if (isOn(flags, 'bank-statement-import')) {
+      // The month links open the month page, so they show only when that page is on.
+      if (isOn(flags, 'bank-statement-import') && isOn(flags, 'month-page')) {
         const months = listMonths(db);
         if (months.length > 0) {
           const items = months.map((m) => `<li><a href="/month?m=${m}">${m}</a></li>`).join('\n');
@@ -204,6 +206,12 @@ export function createApp({ db, flags }) {
           res.end('Server error');
         },
       );
+      return;
+    }
+    if (url.pathname === '/month' && isOn(flags, 'month-page')) {
+      const month = monthPage(db, url);
+      res.writeHead(month.status, { 'content-type': month.type });
+      res.end(month.type.startsWith('text/html') ? page(month.body) : month.body);
       return;
     }
     res.writeHead(404,{ 'content-type': 'text/plain; charset=utf-8' });
