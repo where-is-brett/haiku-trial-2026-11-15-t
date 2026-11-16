@@ -16,7 +16,7 @@ export function monthPage(db, url) {
     return { status: 400, type: 'text/plain; charset=utf-8', body: 'Month must look like YYYY-MM' };
   }
 
-  const transactions = db.prepare('SELECT date, description, cents FROM transactions').all();
+  const transactions = db.prepare('SELECT id, date, description, cents, category FROM transactions').all();
   const { rows, totalCents, count } = monthTotals(transactions, m);
   const [year, month] = m.split('-').map(Number);
 

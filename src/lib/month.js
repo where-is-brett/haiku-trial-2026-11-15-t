@@ -1,6 +1,7 @@
 // src/lib/month.js
-import { CATEGORIES, categoryOf } from './categories.js';
+import { CATEGORIES } from './categories.js';
 import { monthOf } from './dates.js';
+import { categoryFor } from './store.js';
 
 // True only for 'YYYY-MM' with a month from 01 to 12.
 export function isMonth(text) {
@@ -17,13 +18,14 @@ export function shiftMonth(m, delta) {
 }
 
 // Totals the transactions dated in month m, by category, in CATEGORIES order.
+// Each row is keyed by categoryFor: its stored category, else its shop's.
 // Income counts as negative whatever its stored sign.
 export function monthTotals(transactions, m) {
   const inMonth = transactions.filter((t) => monthOf(t.date) === m);
   const sums = new Map();
   let totalCents = 0;
   for (const t of inMonth) {
-    const key = categoryOf(t.description);
+    const key = categoryFor(t);
     const counted = key === 'income' ? -Math.abs(t.cents) : t.cents;
     sums.set(key, (sums.get(key) ?? 0) + counted);
     totalCents += counted;

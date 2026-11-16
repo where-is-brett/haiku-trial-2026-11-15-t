@@ -63,6 +63,24 @@ test('a month with no transactions has no rows and a count of zero', () => {
   });
 });
 
+test('a moved row counts in its new category and not its old one', () => {
+  const rows = [{ date: '2026-08-02', description: 'Greenbarrow Fresh', cents: -4500, category: 'dining' }];
+  assert.deepEqual(monthTotals(rows, '2026-08'), {
+    rows: [{ key: 'dining', label: 'Eating out', cents: -4500 }],
+    totalCents: -4500,
+    count: 1,
+  });
+});
+
+test('a row with no stored category counts under its shop\'s category', () => {
+  const rows = [{ date: '2026-08-02', description: 'Greenbarrow Fresh', cents: -4500, category: null }];
+  assert.deepEqual(monthTotals(rows, '2026-08'), {
+    rows: [{ key: 'groceries', label: 'Groceries', cents: -4500 }],
+    totalCents: -4500,
+    count: 1,
+  });
+});
+
 test('other comes last, after the named categories', () => {
   const rows = [t('2026-08-01', 'Unknown Shop', 500), t('2026-08-02', 'Greenbarrow Fresh', 100)];
   assert.deepEqual(
