@@ -172,21 +172,24 @@ test('the month list and total use the row\'s category', async () => {
 test('after a move, the month total moves the amount to the new category', async () => {
   const db = new DatabaseSync(':memory:');
   createTable(db);
-  db.prepare('INSERT INTO transactions (date, description, cents) VALUES (?, ?, ?)')
-    .run('2026-08-02', 'Greenbarrow Fresh', -4500);
+  const add = db.prepare('INSERT INTO transactions (date, description, cents) VALUES (?, ?, ?)');
+  add.run('2026-08-02', 'Greenbarrow Fresh', -4500);
+  // A second groceries row stays behind when id 1 moves, so Groceries stays on the page.
+  add.run('2026-08-09', 'Pennywhistle Market', -2000);
   const { server, base } = await serveMonth(db, ON);
   try {
     const before = await (await fetch(`${base}/month?m=2026-08`)).text();
     assert.match(before, /Groceries/);
-    assert.match(before, /<td data-category="groceries" data-total="-45\.00">/);
+    assert.match(before, /<td data-category="groceries" data-total="-65\.00">/);
 
     const res = await postEdit(base, { id: '1', category: 'dining' });
     assert.equal(res.status, 303);
 
     const after = await (await fetch(`${base}/month?m=2026-08`)).text();
     assert.match(after, /<td data-category="dining" data-total="-45\.00">/);
-    assert.doesNotMatch(after, /data-category="groceries"/);
-    assert.doesNotMatch(after, /Groceries/);
+    assert.match(after, /<td data-category="groceries" data-total="-20\.00">/);
+    assert.match(after, /Groceries/);
+    assert.doesNotMatch(after, /data-category="groceries" data-total="-65\.00"/);
   } finally {
     server.close();
   }
