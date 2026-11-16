@@ -1,6 +1,6 @@
 # Move a transaction to another category, slice 1: The edit page stores a category Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** `/edit?id=<id>` shows a transaction and a `Category` select; saving stores the category and returns to that transaction's month, `/month?m=YYYY-MM`. The category is kept on re-import.
 
